@@ -49,7 +49,7 @@ const ERROR_KEY = {
  */
 const VALIDATORS = {
   fullName: (f) =>
-    " ".join(f.fullName.trim().split(/\s+/)).length < 2
+    f.fullName.trim().split(/\s+/).join(" ").length < 2
       ? "Please enter your full name."
       : null,
 
