@@ -30,8 +30,8 @@ export function AuthProvider({ children }) {
     };
   }, [token]);
 
-  const signIn = useCallback(async (password) => {
-    const result = await apiLogin(password);
+  const signIn = useCallback(async (email, password) => {
+    const result = await apiLogin(email, password);
     setTokenState(result.token);
     setStatus("in");
     return result;

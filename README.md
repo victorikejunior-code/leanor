@@ -69,7 +69,8 @@ Fill in `backend/.env`:
 |---|---|
 | `ASTRA_DB_API_ENDPOINT` | Astra DB → Database Details → **API endpoint** |
 | `ASTRA_DB_APPLICATION_TOKEN` | Astra DB → **Generate Token** → application token |
-| `ADMIN_PASSWORD` | **Change this.** The inbox password. Empty = inbox open to anyone |
+| `ADMIN_EMAIL` | **The inbox sign-in email.** Email *and* password are both required; if either is missing, every sign-in is rejected |
+| `ADMIN_PASSWORD` | **Change this.** The inbox password. Empty = sign-in impossible (inbox stays closed) |
 | `TOKEN_SECRET` | Optional random string; signs admin sessions |
 | `STORAGE_BACKEND` | `auto` (default) · `astra` (hard-fail) · `memory` (throwaway) |
 | `MAX_ID_CARDS` | ID card photograph slots (default 2) |
@@ -109,7 +110,7 @@ React app, with deep links like `/admin` handled by an SPA fallback route.
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | POST | `/api/submissions` | public | Submit form + images (multipart/form-data) |
-| POST | `/api/admin/login` | public | `{ password }` → signed token |
+| POST | `/api/admin/login` | public | `{ email, password }` → signed token |
 | GET | `/api/admin/session` | token | Validate a stored token |
 | GET | `/api/submissions` | token | List submissions (owner inbox) |
 | GET | `/api/submissions/{id}` | token | One submission |
@@ -121,8 +122,12 @@ Authenticated calls send `Authorization: Bearer <token>`.
 
 ## 5. How the admin inbox is protected
 
-1. `POST /api/admin/login` compares `ADMIN_PASSWORD` with `hmac.compare_digest`.
-2. On success it returns a token: `base64({"sub","exp"}) + "." + HMAC-SHA256(payload)`.
+1. `POST /api/admin/login` takes **`email` and `password`** and compares *both*
+   against `ADMIN_EMAIL` / `ADMIN_PASSWORD` with `hmac.compare_digest`. Failures
+   always answer `Incorrect email or password.` — never revealing which field
+   was wrong. If either variable is empty, every attempt is rejected.
+2. On success it returns a token: `base64({"sub","exp"}) + "." + HMAC-SHA256(payload)`,
+   where `sub` is the admin email.
 3. `require_admin` re-verifies the signature and expiry on every protected route.
 4. Eight failed attempts from one IP triggers a five-minute lockout.
 5. The frontend keeps the token in `sessionStorage`, so closing the tab signs out.
@@ -131,17 +136,19 @@ Nothing is stored server-side, so there are no sessions to expire or clean up.
 
 ## 6. Tests
 
-With the server running on port 8000 and `ADMIN_PASSWORD=test-password`:
+With the server running on port 8000 and `ADMIN_EMAIL` + `ADMIN_PASSWORD` set
+(`smoke_test.py` reads both from the environment or `backend/.env`):
 
 ```powershell
 cd C:\Users\HP\leanor\backend
-$env:ADMIN_PASSWORD="test-password"; $env:STORAGE_BACKEND="memory"
+$env:ADMIN_EMAIL="admin@example.com"; $env:ADMIN_PASSWORD="test-password"; $env:STORAGE_BACKEND="memory"
 python -m uvicorn main:app --port 8000
 # in a second terminal:
 python smoke_test.py
 ```
 
-24 checks: auth, 401s on protected routes, validation, both password fields, the
+27 checks: auth (wrong email, wrong password, missing email field, correct
+pair), 401s on protected routes, validation, both password fields, the
 absence of the removed `schools` field, the submit → list → stats → delete round
 trip, and forged-token rejection.
 
@@ -150,8 +157,9 @@ trip, and forged-token rejection.
 This app collects **passwords, bank details and ID card photographs** — the most
 sensitive category of personal data.
 
-- **Always set `ADMIN_PASSWORD`.** With it empty, `/api/submissions` is open to
-  anyone — the server logs a warning at startup.
+- **Always set `ADMIN_EMAIL` and `ADMIN_PASSWORD`.** With either empty, sign-in
+  is impossible (the server logs a warning at startup). Never leave both empty —
+  that opens `/api/submissions` to anyone.
 - Serve over **HTTPS only**. Never accept passwords or ID photographs over plain
   HTTP. The password inputs are excluded from browser autofill (`autocomplete="off"`,
   `data-1p-ignore`) but that is a convenience, not a control.

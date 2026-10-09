@@ -74,10 +74,10 @@ export function fetchHealth() {
 
 /* ----------------------------------------------------------------- admin */
 
-export async function login(password) {
+export async function login(email, password) {
   const result = await request("/api/admin/login", {
     method: "POST",
-    body: { password },
+    body: { email: email.trim().toLowerCase(), password },
   });
   setToken(result.token);
   return result;

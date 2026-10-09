@@ -1,6 +1,6 @@
 """Admin authentication.
 
-Password -> signed, expiring token, using only the standard library
+Email + password -> signed, expiring token, using only the standard library
 (HMAC-SHA256 over a compact ``payload.signature`` string). No extra
 dependency, no server-side session table, nothing to clean up.
 """
@@ -57,10 +57,11 @@ def _b64decode(text: str) -> bytes:
 
 
 def _secret() -> bytes:
-    """Signing key: TOKEN_SECRET when set, otherwise derived from the password."""
+    """Signing key: TOKEN_SECRET when set, otherwise derived from the credentials."""
     if settings.token_secret:
         return settings.token_secret.encode("utf-8")
-    return hashlib.sha256(f"leanor::{settings.admin_password}".encode()).digest()
+    raw = f"leanor::{settings.admin_email}::{settings.admin_password}"
+    return hashlib.sha256(raw.encode()).digest()
 
 
 def _sign(payload: str) -> str:
@@ -69,11 +70,21 @@ def _sign(payload: str) -> str:
 
 
 # --- public API --------------------------------------------------------------
-def verify_password(candidate: str) -> bool:
-    """Constant-time comparison against ADMIN_PASSWORD."""
-    if not settings.admin_password:
-        return True  # auth disabled -> local-dev mode
-    return hmac.compare_digest(candidate.strip(), settings.admin_password)
+def verify_credentials(candidate_email: str, candidate_password: str) -> bool:
+    """Constant-time check of BOTH fields; wrong email and wrong password are
+    indistinguishable to the caller (and to a timing attacker).
+
+    Sign-in requires ``ADMIN_EMAIL`` *and* ``ADMIN_PASSWORD``: with either one
+    missing from ``.env`` the comparison always fails, so nobody gets in.
+    """
+    email_ok = bool(settings.admin_email) and hmac.compare_digest(
+        candidate_email.strip().lower(), settings.admin_email
+    )
+    password_ok = bool(settings.admin_password) and hmac.compare_digest(
+        candidate_password.strip(), settings.admin_password
+    )
+    # evaluate both sides every time, then combine — keeps the timing flat
+    return email_ok and password_ok
 
 
 def issue_token(subject: str = "admin") -> tuple[str, int]:
@@ -87,7 +98,7 @@ def issue_token(subject: str = "admin") -> tuple[str, int]:
 
 def verify_token(token: str | None) -> dict[str, Any]:
     """Validate a token, raising 401 when it is missing, forged or expired."""
-    if not settings.admin_password:
+    if not settings.auth_enabled:
         return {"sub": "admin", "exp": None, "auth": "disabled"}
 
     if not token:

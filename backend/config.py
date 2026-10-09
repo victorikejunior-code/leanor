@@ -42,6 +42,7 @@ class Settings:
 
         # --- admin / security -------------------------------------------
         self.admin_password: str = os.getenv("ADMIN_PASSWORD", "").strip()
+        self.admin_email: str = os.getenv("ADMIN_EMAIL", "").strip().lower()
         self.token_secret: str = os.getenv("TOKEN_SECRET", "").strip()
         self.token_ttl_hours: int = _as_int(os.getenv("TOKEN_TTL_HOURS"), 12)
 
@@ -49,7 +50,7 @@ class Settings:
         self.cors_origins: list[str] = _split_csv(
             os.getenv(
                 "CORS_ORIGINS",
-                "http://localhost:41783,http://127.0.0.1:41783",
+                "http://localhost:39573,http://127.0.0.1:39573",
             )
         )
 
@@ -72,8 +73,17 @@ class Settings:
 
     @property
     def auth_enabled(self) -> bool:
-        """Without a password the inbox stays open — only for local dev."""
-        return bool(self.admin_password)
+        """Any credential configured => tokens are required; nobody gets in free.
+
+        Only an entirely empty ADMIN_EMAIL *and* ADMIN_PASSWORD (local dev)
+        opens the inbox without a token.
+        """
+        return bool(self.admin_password) or bool(self.admin_email)
+
+    @property
+    def credentials_complete(self) -> bool:
+        """Sign-in can only succeed when BOTH fields are present in .env."""
+        return bool(self.admin_password) and bool(self.admin_email)
 
 
 settings = Settings()

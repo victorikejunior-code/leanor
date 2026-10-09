@@ -1,4 +1,10 @@
-"""Admin sign-in endpoints."""
+"""Admin sign-in endpoints.
+
+Sign-in needs **both** an email and a password: they are checked together in
+``auth.verify_credentials`` so neither field can be probed on its own. When
+``ADMIN_EMAIL`` (or ``ADMIN_PASSWORD``) is missing from ``.env`` every attempt
+is rejected.
+"""
 
 from __future__ import annotations
 
@@ -13,14 +19,19 @@ from auth import (
     issue_token,
     register_failure,
     require_admin,
-    verify_password,
+    verify_credentials,
 )
 from config import settings
+from schemas import EMAIL_RE
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
+# One message for every failure mode — never reveal which field was wrong.
+BAD_CREDENTIALS = "Incorrect email or password."
+
 
 class LoginBody(BaseModel):
+    email: str = Field(..., min_length=3, max_length=254)
     password: str = Field(..., min_length=1, max_length=200)
 
 
@@ -40,14 +51,21 @@ def login(body: LoginBody, request: Request) -> LoginResponse:
             detail="Too many failed attempts. Try again in a few minutes.",
         )
 
-    if not verify_password(body.password):
+    email = body.email.strip().lower()
+    if not EMAIL_RE.match(email):
         register_failure(host)
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect password."
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=BAD_CREDENTIALS
+        )
+
+    if not verify_credentials(email, body.password):
+        register_failure(host)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=BAD_CREDENTIALS
         )
 
     clear_failures(host)
-    token, expires_at = issue_token()
+    token, expires_at = issue_token(subject=email)
     return LoginResponse(
         token=token,
         expires_at=datetime.fromtimestamp(expires_at, tz=timezone.utc).isoformat(),

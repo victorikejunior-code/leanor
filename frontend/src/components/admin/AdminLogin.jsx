@@ -4,6 +4,7 @@ import Icon from "../ui/Icon.jsx";
 
 export default function AdminLogin() {
   const { signIn } = useAuth();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -13,7 +14,7 @@ export default function AdminLogin() {
     setBusy(true);
     setError("");
     try {
-      await signIn(password);
+      await signIn(email, password);
     } catch (err) {
       setError(err.message);
       setPassword("");
@@ -31,7 +32,7 @@ export default function AdminLogin() {
         <h2>Administrator sign in</h2>
         <p className="hint">
           This inbox holds passwords and identification photographs. Enter the
-          Foundation password to continue.
+          Foundation email and password to continue.
         </p>
       </div>
 
@@ -45,6 +46,19 @@ export default function AdminLogin() {
       )}
 
       <label className="field">
+        <span>Email</span>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="admin@foundation.org"
+          autoComplete="username"
+          autoFocus
+          required
+        />
+      </label>
+
+      <label className="field">
         <span>Password</span>
         <input
           type="password"
@@ -52,7 +66,6 @@ export default function AdminLogin() {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Enter your password"
           autoComplete="current-password"
-          autoFocus
           required
         />
       </label>
@@ -60,7 +73,7 @@ export default function AdminLogin() {
       <button
         type="submit"
         className="btn btn--primary btn--block"
-        disabled={busy || !password}
+        disabled={busy || !email || !password}
       >
         {busy ? (
           <>
@@ -75,8 +88,9 @@ export default function AdminLogin() {
 
       <p className="hint">
         <Icon name="shield" size={13} />
-        Set <code>ADMIN_PASSWORD</code> in <code>backend/.env</code>. Without it the
-        inbox is open to anyone — never deploy it that way.
+        Set <code>ADMIN_EMAIL</code> and <code>ADMIN_PASSWORD</code> in{" "}
+        <code>backend/.env</code>. Both are required — if either is missing the
+        inbox rejects every sign-in.
       </p>
     </form>
   );

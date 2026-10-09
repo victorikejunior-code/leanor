@@ -79,8 +79,15 @@ async def lifespan(app: FastAPI):
     app.state.storage = build_storage()
     if not settings.auth_enabled:
         logger.warning(
-            "ADMIN_PASSWORD is not set — /admin is readable without signing in. "
-            "Set it in backend/.env before going live."
+            "Neither ADMIN_PASSWORD nor ADMIN_EMAIL is set — /admin is readable "
+            "without signing in. Set both in backend/.env before going live."
+        )
+    elif not settings.credentials_complete:
+        missing = "ADMIN_EMAIL" if not settings.admin_email else "ADMIN_PASSWORD"
+        logger.warning(
+            "%s is missing from backend/.env — admin sign-in will reject every "
+            "attempt until both ADMIN_EMAIL and ADMIN_PASSWORD are set.",
+            missing,
         )
     yield
 

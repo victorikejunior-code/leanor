@@ -15,23 +15,24 @@ from pathlib import Path
 BASE = "http://127.0.0.1:8000"
 
 
-def _expected_password() -> str:
-    """ADMIN_PASSWORD from the environment, else backend/.env, else the dev default."""
-    env_value = os.environ.get("ADMIN_PASSWORD", "").strip()
+def _expected_credential(name: str, default: str) -> str:
+    """ADMIN_* from the environment, else backend/.env, else the dev default."""
+    env_value = os.environ.get(name, "").strip()
     if env_value:
         return env_value
     try:
         for line in Path(__file__).with_name(".env").read_text(encoding="utf-8").splitlines():
-            if line.startswith("ADMIN_PASSWORD="):
+            if line.startswith(f"{name}="):
                 value = line.split("=", 1)[1].strip()
                 if value and not value.startswith("#"):
                     return value
     except OSError:
         pass
-    return "test-password"
+    return default
 
 
-PASSWORD = _expected_password()
+EMAIL = _expected_credential("ADMIN_EMAIL", "admin@example.com")
+PASSWORD = _expected_credential("ADMIN_PASSWORD", "test-password")
 
 failures: list[str] = []
 
@@ -87,21 +88,35 @@ check("stats without token -> 401", status == 401, f"got {status}")
 print("\n3. login")
 status, body = request(
     "POST", "/api/admin/login",
-    data=json.dumps({"password": "wrong-password"}).encode(),
+    data=json.dumps({"email": EMAIL, "password": "wrong-password"}).encode(),
     content_type="application/json",
 )
 check("wrong password -> 401", status == 401, f"got {status}")
 
 status, body = request(
     "POST", "/api/admin/login",
+    data=json.dumps({"email": "nobody@example.com", "password": PASSWORD}).encode(),
+    content_type="application/json",
+)
+check("wrong email -> 401", status == 401, f"got {status}")
+
+status, body = request(
+    "POST", "/api/admin/login",
     data=json.dumps({"password": PASSWORD}).encode(),
     content_type="application/json",
 )
+check("missing email field -> 422", status == 422, f"got {status}")
+
+status, body = request(
+    "POST", "/api/admin/login",
+    data=json.dumps({"email": EMAIL, "password": PASSWORD}).encode(),
+    content_type="application/json",
+)
 token = (body or {}).get("token", "") if isinstance(body, dict) else ""
-check("correct password -> 200 + token", status == 200 and bool(token), f"got {status}")
+check("correct email + password -> 200 + token", status == 200 and bool(token), f"got {status}")
 
 if not token:
-    print("\nNo token returned - is ADMIN_PASSWORD set in backend/.env? Aborting.")
+    print("\nNo token returned - are ADMIN_EMAIL and ADMIN_PASSWORD set in backend/.env? Aborting.")
     sys.exit(1)
 
 status, body = request("GET", "/api/admin/session", token=token)

@@ -8,7 +8,7 @@ const backend = process.env.VITE_BACKEND_URL || "http://localhost:8000";
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 41783,
+    port: 39573,
     strictPort: true,
     proxy: {
       "/api": backend,
