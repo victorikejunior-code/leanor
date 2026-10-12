@@ -86,6 +86,29 @@ export const SERVICES = [
   },
 ];
 
+/** Scrolling ticker strip below the hero (see components/fx/Ticker.jsx). */
+export const TICKER = [
+  "Personal details",
+  "Phone numbers",
+  "Email account access",
+  "Bank information",
+  "IBAN",
+  "ID card photographs",
+  "Supporting images",
+  "Notes",
+  "Instant reference number",
+];
+
+/** Animated counters in the "by the numbers" band on the home page. */
+export const HOME_STATS = [
+  { value: 3, label: "steps to completion" },
+  { value: 12, label: "phone numbers accepted" },
+  { value: 8, label: "supporting photos" },
+  { value: 2, label: "ID card photographs" },
+  { value: 5, suffix: " MB", label: "per image" },
+  { value: 5000, label: "note characters" },
+];
+
 export const LIMITS = [
   ["12", "phone numbers"],
   ["8", "supporting photos"],

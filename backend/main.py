@@ -134,11 +134,17 @@ if DIST.exists():
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa(full_path: str) -> FileResponse:
-        """Serve index.html for every non-API route so deep links work."""
+        """Serve index.html for every non-API route so deep links work.
+
+        The HTML is always revalidated (no-cache) — otherwise a browser can
+        keep an old index.html that points at a hashed JS/CSS bundle we have
+        since replaced, and that stale asset request 404s. Hashed files under
+        /assets are content-addressed, so they stay cacheable.
+        """
         candidate = (DIST / full_path).resolve()
         if full_path and candidate.is_file() and DIST.resolve() in candidate.parents:
             return FileResponse(candidate)
-        return FileResponse(INDEX_HTML)
+        return FileResponse(INDEX_HTML, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/api", include_in_schema=False)

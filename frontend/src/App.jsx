@@ -2,6 +2,7 @@ import { Route, Routes, useLocation } from "react-router-dom";
 
 import Footer from "./components/layout/Footer.jsx";
 import Navbar from "./components/layout/Navbar.jsx";
+import BackToTop from "./components/fx/BackToTop.jsx";
 
 import AboutPage from "./pages/AboutPage.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
@@ -32,6 +33,7 @@ export default function App() {
       </main>
 
       <Footer />
+      <BackToTop />
     </div>
   );
 }

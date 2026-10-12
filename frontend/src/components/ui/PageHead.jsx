@@ -4,7 +4,7 @@ export default function PageHead({ eyebrow, title, lead }) {
     <header className="page-head">
       <div className="container">
         {eyebrow && <span className="eyebrow">{eyebrow}</span>}
-        <h1>{title}</h1>
+        <h1 className="fx-shimmer">{title}</h1>
         {lead && <p>{lead}</p>}
       </div>
     </header>

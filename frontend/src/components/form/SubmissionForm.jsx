@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { submitInformation } from "../../api/client.js";
 import Icon from "../ui/Icon.jsx";
+import Confetti from "../fx/Confetti.jsx";
 import { Reveal } from "../../hooks/useReveal.jsx";
 import ImageSlot from "./ImageSlot.jsx";
 import PictureUploader, { MAX_FILE_MB } from "./PictureUploader.jsx";
@@ -329,6 +330,7 @@ export default function SubmissionForm() {
   if (result) {
     return (
       <section className="card success-card stack">
+        <Confetti fire={1} />
         <div className="success-mark" aria-hidden="true">
           <Icon name="check" size={30} />
         </div>
